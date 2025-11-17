@@ -291,6 +291,7 @@ import {
   ImagePreview,
   showToast,
   showConfirmDialog,
+  closeToast,
 } from 'vant'
 import {
   getProductDetail,
@@ -744,8 +745,7 @@ const onBuyNow = () => {
 }
 
 // 确认立即购买
-// 确认立即购买
-const confirmBuyNow = () => {
+const confirmBuyNow = async () => {
   // 检查是否选择了规格
   if (skuList.value.length > 0 && !currentSku.value) {
     showToast('请选择商品规格')
@@ -759,31 +759,57 @@ const confirmBuyNow = () => {
     return
   }
 
-  console.log('立即购买:', {
-    sku_id: currentSku.value?.id,
-    quantity: quantity.value,
-    title: product.value?.title,
-    image: currentSku.value?.image || product.value?.cover_image,
-    price: currentSku.value?.price,
-    sku_attrs: `${selectedColor.value} / ${selectedSize.value}`,
-  })
+  try {
+    showLoadingToast({
+      message: '处理中...',
+      forbidClick: true,
+      duration: 0,
+    })
 
-  // 跳转到订单确认页，传递商品信息
-  router.push({
-    path: '/order/confirm',
-    query: {
-      type: 'buy',
+    // 先添加到购物车
+    await cartStore.addCartItem({
       sku_id: currentSku.value!.id,
       quantity: quantity.value,
-      title: product.value!.title,
-      image: currentSku.value?.image || product.value!.cover_image,
-      price: currentSku.value!.price,
-      sku_attrs: `${selectedColor.value} / ${selectedSize.value}`,
-    },
-  })
+    })
 
-  // 关闭弹窗
-  showSkuPopup.value = false
+    // 重新获取购物车列表
+    await cartStore.fetchCartList()
+
+    // 找到刚添加的商品并选中
+    const addedItem = cartStore.cartList.find(
+      (item) => item.sku_id === currentSku.value!.id
+    )
+    if (addedItem) {
+      // 取消其他商品的选中状态
+      cartStore.selectAll(false)
+      // 只选中当前商品
+      cartStore.toggleSelect(addedItem.id)
+    }
+
+    closeToast()
+
+    console.log('立即购买 - 已添加到购物车并选中')
+
+    // 跳转到订单确认页
+    router.push({
+      path: '/order/confirm',
+      query: {
+        type: 'buy',
+      },
+    })
+
+    // 关闭弹窗
+    showSkuPopup.value = false
+
+    // 重置数量和选择
+    quantity.value = 1
+    selectedColor.value = ''
+    selectedSize.value = ''
+  } catch (error) {
+    closeToast()
+    console.error('立即购买失败:', error)
+    showToast('操作失败')
+  }
 }
 
 onMounted(() => {
@@ -962,7 +988,7 @@ onMounted(() => {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          
+
           .van-badge__wrapper {
             display: flex;
             align-items: center;
@@ -1101,4 +1127,3 @@ onMounted(() => {
   }
 }
 </style>
-
