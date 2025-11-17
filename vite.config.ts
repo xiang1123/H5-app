@@ -1,38 +1,40 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import Components from 'unplugin-vue-components/vite'
-import { VantResolver } from 'unplugin-vue-components/resolvers'
-import { resolve } from 'path'
+import path from 'path'
 
 export default defineConfig({
-  plugins: [
-    vue(),
-    Components({
-      resolvers: [VantResolver()],
-    }),
-  ],
+  plugins: [vue()],
+  
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-    },
+      '@': path.resolve(__dirname, 'src')
+    }
   },
+  
+  // 生产环境配置
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    }
+  },
+  
+  // 开发服务器配置
   server: {
-    port: 3000,
+    port: 5173,
     open: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://h5.yyzzhhh.work.gd/',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-    },
-  },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        additionalData: `@import "@/assets/styles/variables.scss";`,
-        silenceDeprecations: ['import'], // 禁用 import 警告
-      },
-    },
-  },
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  }
 })
