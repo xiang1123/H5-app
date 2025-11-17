@@ -1,5 +1,3 @@
-**README.md**
-
 ```markdown
 # 电商 H5 移动端项目
 
