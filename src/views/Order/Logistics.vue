@@ -1,6 +1,5 @@
 <template>
   <div class="logistics-page">
-    <!-- 顶部导航 -->
     <van-nav-bar
       title="物流信息"
       left-arrow
@@ -9,14 +8,11 @@
       @click-left="onBack"
     />
 
-    <!-- 骨架屏 -->
     <div v-if="loading" class="skeleton-container">
       <van-skeleton title :row="5" />
     </div>
 
-    <!-- 物流信息 -->
     <div v-else-if="shipmentInfo" class="logistics-content">
-      <!-- 物流状态 -->
       <div class="logistics-status" :class="`status-${shipmentInfo.status.toLowerCase()}`">
         <div class="status-icon">
           <van-icon :name="getStatusIcon(shipmentInfo.status)" size="48" />
@@ -27,7 +23,6 @@
         </div>
       </div>
 
-      <!-- 物流公司信息 -->
       <div class="logistics-header">
         <div class="company-info">
           <van-icon name="logistics" size="20" color="#1989fa" />
@@ -46,7 +41,6 @@
         </van-button>
       </div>
 
-      <!-- 时间信息 -->
       <div class="time-info">
         <van-cell-group inset>
           <van-cell 
@@ -62,7 +56,6 @@
         </van-cell-group>
       </div>
 
-      <!-- 物流轨迹说明 -->
       <div class="logistics-notice">
         <van-notice-bar
           left-icon="info-o"
@@ -72,7 +65,6 @@
         />
       </div>
 
-      <!-- 联系客服 -->
       <div class="contact-section">
         <van-button block plain @click="contactService">
           联系客服
@@ -80,17 +72,16 @@
       </div>
     </div>
 
-    <!-- 暂无物流信息 -->
-    <van-empty v-else description="暂无物流信息">
+    <van-empty v-else :description="emptyTip">
       <van-button round type="primary" @click="onBack">
-        返回
+        返回订单
       </van-button>
     </van-empty>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NavBar as VanNavBar,
@@ -103,13 +94,39 @@ import {
   NoticeBar as VanNoticeBar,
   showToast,
 } from 'vant'
-import { getOrderShipment, getShipmentStatusText, type ShipmentInfo } from '@/api/logistics'
+// 修正：从 order.ts 导入修复后的 getShipmentDetail
+import { getShipmentDetail, type ShipmentDetail } from '@/api/order' 
+
+// 简化接口定义，避免依赖未提供的 api/logistics.ts
+interface LocalShipmentInfo extends ShipmentDetail {} 
 
 const router = useRouter()
 const route = useRoute()
 
 const loading = ref(true)
-const shipmentInfo = ref<ShipmentInfo | null>(null)
+const shipmentInfo = ref<LocalShipmentInfo | null>(null)
+
+// 假设订单状态从路由中获取（如果从订单列表页跳转，通常会带上）
+const orderStatus = ref(route.query.order_status as string || '') 
+
+const emptyTip = computed(() => {
+    if (loading.value) return '正在加载...'
+    if (orderStatus.value === 'PAID') return '订单等待商家发货'
+    if (orderStatus.value === 'SHIPPED') return '商家已发货，物流信息正在录入中'
+    return '暂无物流信息或订单ID无效'
+})
+
+
+// 状态文本函数 (简化版，依赖 order.ts 中的 OrderStatusMap 扩充)
+const getShipmentStatusText = (status: string): string => {
+    const map: Record<string, string> = {
+        'PENDING': '待揽收',
+        'SHIPPED': '运输中',
+        'DELIVERED': '已送达',
+        'COMPLETED': '已签收',
+    }
+    return map[status] || status
+}
 
 // 获取状态图标
 const getStatusIcon = (status: string): string => {
@@ -117,6 +134,7 @@ const getStatusIcon = (status: string): string => {
     'PENDING': 'clock-o',
     'SHIPPED': 'logistics',
     'DELIVERED': 'passed',
+    'COMPLETED': 'passed',
     'RETURNED': 'revoke',
   }
   return iconMap[status] || 'logistics'
@@ -127,11 +145,13 @@ const getStatusDesc = (status: string): string => {
   const descMap: Record<string, string> = {
     'PENDING': '商家正在准备发货',
     'SHIPPED': '您的包裹正在运输途中',
-    'DELIVERED': '包裹已签收，感谢您的购买',
+    'DELIVERED': '包裹已送达，请及时查收',
+    'COMPLETED': '包裹已签收，感谢您的购买',
     'RETURNED': '包裹已退回',
   }
   return descMap[status] || ''
 }
+
 
 // 格式化时间
 const formatTime = (time: string | null): string => {
@@ -151,45 +171,43 @@ const formatTime = (time: string | null): string => {
   }
 }
 
-// 加载物流信息
+// 加载物流信息 - 核心修复点
 const loadShipmentInfo = async () => {
   try {
     loading.value = true
     
-    const orderId = route.query.id as string
-    
-    if (!orderId) {
-      showToast('订单ID不存在')
-      return
-    }
-
+    // 【核心修复】更安全地读取 order ID，检查 id 和 order_id
+    const orderIdParam = route.query.id || route.query.order_id
+    const orderId = Array.isArray(orderIdParam) ? orderIdParam[0] : orderIdParam
     const numericId = Number(orderId)
     
-    if (isNaN(numericId)) {
-      showToast('订单ID格式错误')
+    if (!orderId || isNaN(numericId)) {
+      showToast('订单ID无效') 
+      loading.value = false
       return
     }
 
     console.log('请求物流信息, 订单ID:', numericId)
 
-    const res = await getOrderShipment(numericId)
-    console.log('物流信息响应:', res)
+    const res = await getShipmentDetail(numericId) 
 
-    if (res.code === 0 && res.data) {
-      shipmentInfo.value = res.data
+    if (res.code === 0) {
+      if (res.data === null) {
+        // 【容错处理】data: null 表示订单已发货但无运单号
+        shipmentInfo.value = null 
+      } else {
+        shipmentInfo.value = res.data as LocalShipmentInfo
+        // 确保状态同步，用于控制 emptyTip
+        orderStatus.value = res.data.status 
+      }
     } else {
       shipmentInfo.value = null
-      showToast(res.message || '获取物流信息失败')
+      showToast(res.message || '查询物流失败')
     }
   } catch (error: any) {
     console.error('加载物流信息失败:', error)
     shipmentInfo.value = null
-    
-    if (error.response?.status === 404) {
-      showToast('物流信息不存在')
-    } else {
-      showToast('加载失败')
-    }
+    showToast('加载失败')
   } finally {
     loading.value = false
   }
@@ -197,6 +215,7 @@ const loadShipmentInfo = async () => {
 
 // 复制运单号
 const copyTrackingNumber = async () => {
+  // ... (保持不变)
   if (!shipmentInfo.value?.tracking_no) return
 
   try {
@@ -275,7 +294,7 @@ onMounted(() => {
         }
       }
 
-      &.status-shipped {
+      &.status-shipped, &.status-delivered {
         background: linear-gradient(135deg, #1989fa 0%, #1677ff 100%);
         color: #fff;
 
@@ -283,8 +302,8 @@ onMounted(() => {
           color: #fff;
         }
       }
-
-      &.status-delivered {
+      
+      &.status-completed {
         background: linear-gradient(135deg, #07c160 0%, #00b578 100%);
         color: #fff;
 

@@ -39,6 +39,15 @@ export interface Order {
   remark?: string
 }
 
+// 【新增】物流详情接口
+export interface ShipmentDetail {
+  company: string
+  tracking_no: string
+  status: string
+  shipped_at: string
+  delivered_at?: string
+}
+
 // 创建订单参数
 export interface CreateOrderParams {
   address_id: number
@@ -69,6 +78,13 @@ export interface OrderDetailResponse {
   data: Order
 }
 
+// 【新增】物流详情响应 (data 可能为 null)
+export interface ShipmentDetailResponse {
+  code: number
+  message: string
+  data: ShipmentDetail | null
+}
+
 // 通用响应
 export interface CommonResponse {
   code: number
@@ -89,6 +105,11 @@ export const getOrderList = (params?: OrderListParams) => {
 // 获取订单详情
 export const getOrderDetail = (id: number) => {
   return request.get<OrderDetailResponse>(`/api/v1/orders/${id}`)
+}
+
+// 【新增】获取物流详情
+export const getShipmentDetail = (orderId: number) => {
+  return request.get<ShipmentDetailResponse>(`/api/v1/orders/${orderId}/shipment`)
 }
 
 // 取消订单
