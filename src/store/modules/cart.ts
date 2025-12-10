@@ -42,22 +42,6 @@ export const useCartStore = defineStore('cart', () => {
     return cartList.value.some(item => item.selected)
   })
 
-  // ====================================================================
-  // 【核心修复】静默删除辅助函数：用于订单提交后的清理
-  // ====================================================================
-  const _attemptSilentDelete = async (id: number): Promise<boolean> => {
-    try {
-      await deleteCartItem(id);
-      return true;
-    } catch (error: any) {
-      // 捕获错误，并静默处理（不显示 Toast，不抛出异常）。
-      // 订单流程中，项不存在是预期内的失败。
-      console.warn(`静默删除购物车项 ${id} 失败 (可能已删除或不存在):`, error.message);
-      return false;
-    }
-  };
-
-
   // 获取购物车列表
   const fetchCartList = async () => {
     try {
@@ -66,7 +50,8 @@ export const useCartStore = defineStore('cart', () => {
       if (res.code === 0 && res.data) {
         cartList.value = (res.data.items || []).map(item => ({
           ...item,
-          selected: item.selected === true ? true : false
+          // 确保 selected 存在，如果后端没返回默认给 false (实际上根据上面的后端修改应该返回了)
+          selected: item.selected ?? false
         }))
       }
       return res
@@ -93,34 +78,42 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  // 通用更新逻辑 (数量或 SKU ID)
-  const updateCartItemLogic = async (params: { id: number, quantity?: number, sku_id?: number }) => {
+  // 【核心修改】通用更新逻辑 (支持 selected)
+  const updateCartItemLogic = async (params: { id: number, quantity?: number, sku_id?: number, selected?: boolean }) => {
     try {
-      const { id, quantity, sku_id } = params;
+      const { id, quantity, sku_id, selected } = params;
 
       const updateData: any = {};
       if (quantity !== undefined) updateData.quantity = quantity;
       if (sku_id !== undefined) updateData.sku_id = sku_id;
+      if (selected !== undefined) updateData.selected = selected;
+
+      // 如果没有任何数据要更新，直接返回
+      if (Object.keys(updateData).length === 0) return;
 
       const res = await updateCartItem(id, updateData);
 
       if (res.code === 0) {
+        // 为了确保金额计算准确（后端计算总价），建议操作成功后静默刷新列表
+        // 或者只在全选/全不选时刷新，这里选择静默刷新以保证数据一致性
         await fetchCartList();
       }
       return res;
     } catch (error: any) {
       console.error('更新购物车项失败:', error);
-      showToast(error.message || '更新失败');
+      // 避免频繁打扰用户，可以选择性 toast
+      if (error?.response?.status !== 422) { 
+         showToast(error.message || '更新失败');
+      }
       throw error;
     }
   }
 
-  // 删除商品 (单个删除 - 用户手动操作)
+  // 删除商品
   const removeCartItem = async (id: number) => {
     try {
       const res = await deleteCartItem(id)
       if (res.code === 0) {
-        // 从列表中移除
         const index = cartList.value.findIndex(item => item.id === id)
         if (index > -1) {
           cartList.value.splice(index, 1)
@@ -151,46 +144,64 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  // 切换选中状态
-  const toggleSelect = (id: number) => {
+  // 【核心修改】切换选中状态
+  const toggleSelect = async (id: number) => {
     const item = cartList.value.find(i => i.id === id)
     if (item) {
-      item.selected = !item.selected
+      // 1. 乐观更新本地 UI，提升响应速度
+      const newValue = !item.selected
+      item.selected = newValue
+
+      try {
+        // 2. 发送请求同步给后端
+        await updateCartItemLogic({ id, selected: newValue })
+      } catch (error) {
+        // 3. 如果失败，回滚本地状态
+        item.selected = !newValue
+        console.error("同步选中状态失败", error)
+        showToast('操作失败，请重试')
+      }
     }
   }
 
-  // 全选/取消全选
-  const selectAll = (selected: boolean) => {
+  // 【核心修改】全选/取消全选
+  const selectAll = async (selected: boolean) => {
+    // 1. 本地先更新
     cartList.value.forEach(item => {
       item.selected = selected
     })
+
+    // 2. 筛选出所有需要更新的项
+    const updates = cartList.value.map(item => 
+      updateCartItemLogic({ id: item.id, selected: selected })
+    )
+
+    try {
+      // 并发请求
+      await Promise.all(updates)
+    } catch (error) {
+      console.error("全选同步失败", error)
+      // 失败则刷新列表以恢复正确状态
+      await fetchCartList()
+      showToast('部分操作同步失败')
+    }
   }
 
-  // 删除选中的商品 (用于订单提交后的清理)
+  // 批量删除选中的商品
   const removeSelectedItems = async () => {
-
     const selectedItems = cartList.value.filter(item => item.selected)
+    if (selectedItems.length === 0) return
 
-    if (selectedItems.length === 0) {
-      return
-    }
-
-    let successCount = 0
-
-    for (const item of selectedItems) {
-      const success = await _attemptSilentDelete(item.id)
-      if (success) {
-        successCount++
-      }
-    }
-
-    await fetchCartList()
-
-    if (successCount > 0) {
-      showToast('购物车已更新')
+    // 逐个删除 (如果有批量删除接口更好，但目前使用现有接口)
+    try {
+        await Promise.all(selectedItems.map(item => deleteCartItem(item.id)))
+        await fetchCartList()
+        showToast('删除成功')
+    } catch (e) {
+        showToast('删除失败')
+        await fetchCartList()
     }
   }
-
   
   return {
     cartList,

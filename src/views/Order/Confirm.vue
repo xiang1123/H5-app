@@ -1,6 +1,5 @@
 <template>
   <div class="order-confirm-page">
-    <!-- 顶部导航 -->
     <van-nav-bar
       title="确认订单"
       left-arrow
@@ -10,7 +9,6 @@
     />
 
     <div class="order-confirm-content">
-      <!-- 收货地址 -->
       <div class="address-section" @click="goAddressList">
         <div v-if="selectedAddress" class="address-info">
           <div class="address-header">
@@ -30,21 +28,11 @@
         <van-icon name="arrow" />
       </div>
 
-      <!-- 商品列表 -->
       <div class="goods-section">
         <div class="section-title">商品清单</div>
         <div class="goods-list">
-          <div
-            v-for="item in orderGoods"
-            :key="item.sku_id"
-            class="goods-item"
-          >
-            <van-image
-              :src="getImageUrl(item.cover_image)"
-              fit="cover"
-              width="80px"
-              height="80px"
-            />
+          <div v-for="item in orderGoods" :key="item.sku_id" class="goods-item">
+            <van-image :src="getImageUrl(item.cover_image)" fit="cover" width="80px" height="80px" />
             <div class="goods-info">
               <div class="goods-name">{{ item.title }}</div>
               <div class="goods-sku" v-if="item.sku_attrs">{{ item.sku_attrs }}</div>
@@ -57,7 +45,6 @@
         </div>
       </div>
 
-      <!-- 订单备注 -->
       <div class="remark-section">
         <van-field
           v-model="remark"
@@ -70,14 +57,12 @@
         />
       </div>
 
-      <!-- 价格明细 -->
       <div class="price-section">
         <van-cell title="商品总额" :value="`¥${formatPrice(totalAmount)}`" />
         <van-cell title="运费" value="¥0.00" />
       </div>
     </div>
 
-    <!-- 底部提交栏 -->
     <div class="submit-bar safe-area-bottom">
       <div class="total-info">
         <span class="label">实付款：</span>
@@ -121,47 +106,29 @@ const selectedAddress = ref<Address | null>(null)
 const orderGoods = ref<any[]>([])
 const remark = ref('')
 
-// 计算总金额
 const totalAmount = computed(() => {
-  return orderGoods.value.reduce((sum, item) => {
-    return sum + item.unit_price * item.quantity
-  }, 0)
+  return orderGoods.value.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
 })
 
-// 处理图片 URL
 const getImageUrl = (url: string) => {
   if (!url) return ''
-  
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url
-  }
-  
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
   const baseURL = import.meta.env.VITE_API_BASE_URL || ''
   return url.startsWith('/') ? `${baseURL}${url}` : `${baseURL}/${url}`
 }
 
-// 格式化价格
 const formatPrice = (price: number) => {
-  if (typeof price === 'number') {
-    return price.toFixed(2)
-  }
-  return '0.00'
+  return typeof price === 'number' ? price.toFixed(2) : '0.00'
 }
 
-// 初始化订单商品
 const initOrderGoods = () => {
-  console.log('初始化订单商品, route.query:', route.query)
-  
-  // 从购物车结算
   if (route.query.type === 'cart') {
     const selectedItems = cartStore.cartList.filter(item => item.selected)
-    
     if (selectedItems.length === 0) {
       showToast('请选择要结算的商品')
       router.back()
       return
     }
-    
     orderGoods.value = selectedItems.map(item => ({
       sku_id: item.sku_id,
       title: item.title,
@@ -171,20 +138,14 @@ const initOrderGoods = () => {
       total_price: item.total_price,
       sku_attrs: null,
     }))
-  }
-  // 立即购买
-  else if (route.query.type === 'buy') {
+  } else if (route.query.type === 'buy') {
     const skuId = Number(route.query.sku_id)
     const quantity = Number(route.query.quantity)
-    
     if (!skuId || !quantity) {
       showToast('订单信息错误')
       router.back()
       return
     }
-    
-    // 这里需要根据 sku_id 获取商品信息
-    // 暂时使用传递的参数
     orderGoods.value = [{
       sku_id: skuId,
       title: route.query.title || '商品',
@@ -195,45 +156,29 @@ const initOrderGoods = () => {
       sku_attrs: route.query.sku_attrs || null,
     }]
   }
-  
-  console.log('订单商品:', orderGoods.value)
 }
 
-// 加载地址
 const loadAddress = async () => {
   try {
     const res = await getAddressList()
-    
     if (res.code === 0 && res.data) {
-      // 使用默认地址
       const defaultAddr = res.data.find(item => item.is_default)
-      if (defaultAddr) {
-        selectedAddress.value = defaultAddr
-      } else if (res.data.length > 0) {
-        // 如果没有默认地址，使用第一个
-        selectedAddress.value = res.data[0]
-      }
+      selectedAddress.value = defaultAddr || (res.data.length > 0 ? res.data[0] : null)
     }
   } catch (error) {
     console.error('加载地址失败:', error)
   }
 }
 
-// 去地址列表
 const goAddressList = () => {
-  router.push({
-    path: '/address/list',
-    query: { from: 'order' }
-  })
+  router.push({ path: '/address/list', query: { from: 'order' } })
 }
 
-// 提交订单
 const onSubmit = async () => {
   if (!selectedAddress.value) {
     showToast('请选择收货地址')
     return
   }
-
   if (orderGoods.value.length === 0) {
     showToast('订单商品为空')
     return
@@ -241,33 +186,25 @@ const onSubmit = async () => {
 
   try {
     submitting.value = true
-
     const params = {
       address_id: selectedAddress.value.id,
       remark: remark.value || '',
+      items: orderGoods.value.map(item => ({
+        sku_id: item.sku_id,
+        quantity: item.quantity
+      }))
     }
 
-    console.log('创建订单参数:', params)
-
     const res = await createOrder(params)
-    console.log('创建订单响应:', res)
-
     if (res.code === 0) {
       showToast('订单创建成功')
-      
-      // 如果是从购物车结算，清空购物车选中的商品
       if (route.query.type === 'cart') {
         await cartStore.removeSelectedItems()
       }
-
-      // 跳转到订单详情或支付页面
       setTimeout(() => {
         const orderId = res.data?.id || res.data?.order_id
         if (orderId) {
-          router.replace({
-            path: '/order/detail',
-            query: { id: orderId }
-          })
+          router.replace({ path: '/order/detail', query: { id: orderId } })
         } else {
           router.replace('/order/list')
         }
@@ -281,10 +218,7 @@ const onSubmit = async () => {
   }
 }
 
-// 返回
-const onBack = () => {
-  router.back()
-}
+const onBack = () => router.back()
 
 onMounted(() => {
   initOrderGoods()
@@ -307,9 +241,7 @@ onMounted(() => {
       margin-bottom: 12px;
       cursor: pointer;
 
-      &:active {
-        background-color: #f7f8fa;
-      }
+      &:active { background-color: #f7f8fa; }
 
       .address-info {
         flex: 1;
@@ -368,9 +300,7 @@ onMounted(() => {
           padding: 12px 0;
           border-bottom: 1px solid #f7f8fa;
 
-          &:last-child {
-            border-bottom: none;
-          }
+          &:last-child { border-bottom: none; }
 
           :deep(.van-image) {
             flex-shrink: 0;
