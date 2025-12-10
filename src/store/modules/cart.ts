@@ -168,8 +168,6 @@ export const useCartStore = defineStore('cart', () => {
 
   // 删除选中的商品 (用于订单提交后的清理)
   const removeSelectedItems = async () => {
-    // 先刷新购物车，获取最新状态
-    await fetchCartList()
 
     const selectedItems = cartList.value.filter(item => item.selected)
 
