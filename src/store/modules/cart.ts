@@ -37,16 +37,36 @@ export const useCartStore = defineStore('cart', () => {
     return cartList.value.length > 0 && cartList.value.every(item => item.selected)
   })
 
+  // 检查是否有选中的商品
+  const hasSelectedItems = computed(() => {
+    return cartList.value.some(item => item.selected)
+  })
+
+  // ====================================================================
+  // 【核心修复】静默删除辅助函数：用于订单提交后的清理
+  // ====================================================================
+  const _attemptSilentDelete = async (id: number): Promise<boolean> => {
+    try {
+      await deleteCartItem(id);
+      return true;
+    } catch (error: any) {
+      // 捕获错误，并静默处理（不显示 Toast，不抛出异常）。
+      // 订单流程中，项不存在是预期内的失败。
+      console.warn(`静默删除购物车项 ${id} 失败 (可能已删除或不存在):`, error.message);
+      return false;
+    }
+  };
+
+
   // 获取购物车列表
   const fetchCartList = async () => {
     try {
       loading.value = true
       const res = await getCartList()
       if (res.code === 0 && res.data) {
-        // 为每个商品添加 selected 属性（默认不选中）
         cartList.value = (res.data.items || []).map(item => ({
           ...item,
-          selected: false
+          selected: item.selected === true ? true : false
         }))
       }
       return res
@@ -63,7 +83,6 @@ export const useCartStore = defineStore('cart', () => {
     try {
       const res = await addToCart(params)
       if (res.code === 0) {
-        // 重新获取购物车列表
         await fetchCartList()
         showToast('已添加到购物车')
       }
@@ -74,28 +93,29 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  // 更新商品数量
-  const updateQuantity = async (id: number, quantity: number) => {
+  // 通用更新逻辑 (数量或 SKU ID)
+  const updateCartItemLogic = async (params: { id: number, quantity?: number, sku_id?: number }) => {
     try {
-      const res = await updateCartItem(id, { quantity })
+      const { id, quantity, sku_id } = params;
+
+      const updateData: any = {};
+      if (quantity !== undefined) updateData.quantity = quantity;
+      if (sku_id !== undefined) updateData.sku_id = sku_id;
+
+      const res = await updateCartItem(id, updateData);
+
       if (res.code === 0) {
-        // 更新本地数据
-        const item = cartList.value.find(i => i.id === id)
-        if (item) {
-          item.quantity = quantity
-          // 重新计算总价
-          item.total_price = item.unit_price * quantity
-        }
+        await fetchCartList();
       }
-      return res
-    } catch (error) {
-      console.error('更新数量失败:', error)
-      showToast('更新失败')
-      throw error
+      return res;
+    } catch (error: any) {
+      console.error('更新购物车项失败:', error);
+      showToast(error.message || '更新失败');
+      throw error;
     }
   }
 
-  // 删除商品
+  // 删除商品 (单个删除 - 用户手动操作)
   const removeCartItem = async (id: number) => {
     try {
       const res = await deleteCartItem(id)
@@ -146,29 +166,34 @@ export const useCartStore = defineStore('cart', () => {
     })
   }
 
-  // 删除选中的商品
+  // 删除选中的商品 (用于订单提交后的清理)
   const removeSelectedItems = async () => {
-    try {
-      const selectedItems = cartList.value.filter(item => item.selected)
-      if (selectedItems.length === 0) {
-        showToast('请选择要删除的商品')
-        return
-      }
+    // 先刷新购物车，获取最新状态
+    await fetchCartList()
 
-      // 逐个删除
-      for (const item of selectedItems) {
-        await deleteCartItem(item.id)
-      }
+    const selectedItems = cartList.value.filter(item => item.selected)
 
-      // 重新获取购物车列表
-      await fetchCartList()
-      showToast('删除成功')
-    } catch (error) {
-      console.error('删除失败:', error)
-      showToast('删除失败')
+    if (selectedItems.length === 0) {
+      return
+    }
+
+    let successCount = 0
+
+    for (const item of selectedItems) {
+      const success = await _attemptSilentDelete(item.id)
+      if (success) {
+        successCount++
+      }
+    }
+
+    await fetchCartList()
+
+    if (successCount > 0) {
+      showToast('购物车已更新')
     }
   }
 
+  
   return {
     cartList,
     loading,
@@ -176,9 +201,10 @@ export const useCartStore = defineStore('cart', () => {
     selectedCount,
     totalPrice,
     isAllSelected,
+    hasSelectedItems,
     fetchCartList,
     addCartItem,
-    updateQuantity,
+    updateCartItem: updateCartItemLogic,
     removeCartItem,
     clearCartList,
     toggleSelect,

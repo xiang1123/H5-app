@@ -60,7 +60,9 @@
             />
             <div class="goods-info">
               <div class="goods-name">{{ item.title }}</div>
-              <div class="goods-sku" v-if="item.sku_attrs">{{ item.sku_attrs }}</div>
+              <div class="goods-sku" v-if="item.sku_attrs">
+                {{ formatSkuAttrs(item.sku_attrs) }}
+              </div>
               <div class="goods-footer">
                 <span class="goods-price">¥{{ formatPrice(item.unit_price) }}</span>
                 <span class="goods-quantity">x{{ item.quantity }}</span>
@@ -185,6 +187,20 @@ const formatPrice = (price: number) => {
     return price.toFixed(2)
   }
   return '0.00'
+}
+
+// 格式化 SKU 属性
+const formatSkuAttrs = (attrs: any) => {
+  if (!attrs) return ''
+  
+  if (typeof attrs === 'string') return attrs
+  
+  // 如果是对象，格式化为字符串
+  const parts = []
+  if (attrs.color) parts.push(attrs.color)
+  if (attrs.size) parts.push(attrs.size)
+  
+  return parts.join(' / ')
 }
 
 // 加载订单详情

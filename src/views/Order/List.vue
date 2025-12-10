@@ -67,7 +67,7 @@
                 <div class="goods-info">
                   <div class="goods-name">{{ item.title }}</div>
                   <div class="goods-sku" v-if="item.sku_attrs">
-                    {{ item.sku_attrs }}
+                    {{ formatSkuAttrs(item.sku_attrs) }}
                   </div>
                   <div class="goods-footer">
                     <span class="goods-price"
@@ -243,6 +243,20 @@ const formatPrice = (price: number) => {
   return '0.00'
 }
 
+// 格式化 SKU 属性
+const formatSkuAttrs = (attrs: any) => {
+  if (!attrs) return ''
+  
+  if (typeof attrs === 'string') return attrs
+  
+  // 如果是对象，格式化为字符串
+  const parts = []
+  if (attrs.color) parts.push(attrs.color)
+  if (attrs.size) parts.push(attrs.size)
+  
+  return parts.join(' / ')
+}
+
 // 加载订单列表
 const loadOrderList = async (isLoadMore = false) => {
   try {
@@ -379,7 +393,6 @@ const onRemindShip = (order: Order) => {
 
 // 查看物流
 const onViewLogistics = (order: Order) => {
-  // 移除 .value，因为 order 是函数参数，不是 ref
   if (
     order.status === 'SHIPPING' ||
     order.status === 'SHIPPED' ||
@@ -431,11 +444,6 @@ const onDeleteOrder = (order: Order) => {
 // 评价订单
 const onComment = (order: Order) => {
   showToast('功能正在开发中...')
-  /* router.push({
-    // path: '/order/comment',
-    // query: { id: order.id },
-    
-  }) */
 }
 
 onMounted(() => {

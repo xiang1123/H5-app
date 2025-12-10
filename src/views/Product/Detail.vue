@@ -1,6 +1,5 @@
 <template>
   <div class="product-detail-page">
-    <!-- 顶部导航 -->
     <van-nav-bar
       title="商品详情"
       left-arrow
@@ -13,16 +12,13 @@
       </template>
     </van-nav-bar>
 
-    <!-- 骨架屏 -->
     <div v-if="loading" class="skeleton-container">
       <van-skeleton title :row="3" />
       <van-skeleton title :row="3" />
       <van-skeleton title :row="3" />
     </div>
 
-    <!-- 商品内容 -->
     <div v-else-if="product" class="product-content">
-      <!-- 商品图片轮播 -->
       <div class="product-swipe">
         <van-swipe
           :autoplay="3000"
@@ -48,7 +44,6 @@
         </div>
       </div>
 
-      <!-- 商品信息 -->
       <div class="product-info">
         <div class="price-section">
           <div class="current-price">
@@ -74,8 +69,8 @@
           <van-tag
             v-for="(tag, index) in product.tags"
             :key="index"
-            type="danger"
-            plain
+            color="#eef7ff"
+            text-color="#1989fa"
             size="medium"
           >
             {{ tag }}
@@ -83,7 +78,6 @@
         </div>
       </div>
 
-      <!-- 规格选择 -->
       <div
         class="spec-section"
         @click="showSkuPopup = true"
@@ -96,9 +90,8 @@
         <van-icon name="arrow" />
       </div>
 
-      <!-- 商品详情 -->
       <div class="detail-section">
-        <van-tabs v-model:active="activeTab" sticky offset-top="46">
+        <van-tabs v-model:active="activeTab" sticky offset-top="46" color="#1989fa">
           <van-tab title="商品详情">
             <div class="detail-content">
               <div class="detail-text" v-if="product.description">
@@ -127,42 +120,46 @@
       </div>
     </div>
 
-    <!-- 商品不存在 -->
     <van-empty v-else description="商品不存在" />
 
-    <!-- 底部操作栏 -->
     <div class="product-footer safe-area-bottom">
       <div class="footer-icons">
         <div class="icon-item" @click="goHome">
-          <van-icon name="wap-home-o" size="20" />
+          <div class="icon-area">
+            <van-icon name="wap-home-o" size="20" />
+          </div>
           <span>首页</span>
         </div>
+        
         <div class="icon-item" @click="goCart">
-          <van-badge :content="cartBadge" :show-zero="false">
+          <div class="icon-area cart-icon-fixed">
             <van-icon name="shopping-cart-o" size="20" />
-          </van-badge>
+            <van-badge :content="cartBadge" :show-zero="false" color="#1989fa" />
+          </div>
           <span>购物车</span>
         </div>
+        
         <div class="icon-item" @click="onCollect">
-          <van-icon
-            :name="isCollected ? 'star' : 'star-o'"
-            :color="isCollected ? '#ee0a24' : ''"
-            size="20"
-          />
+          <div class="icon-area">
+            <van-icon
+              :name="isCollected ? 'star' : 'star-o'"
+              :color="isCollected ? '#1989fa' : ''"
+              size="20"
+            />
+          </div>
           <span>收藏</span>
         </div>
       </div>
       <div class="footer-buttons">
-        <van-button type="warning" round @click="onAddToCart">
+        <button class="action-btn btn-cart" @click="onAddToCart">
           加入购物车
-        </van-button>
-        <van-button type="danger" round @click="onBuyNow">
+        </button>
+        <button class="action-btn btn-buy" @click="onBuyNow">
           立即购买
-        </van-button>
+        </button>
       </div>
     </div>
 
-    <!-- SKU 选择弹窗 -->
     <van-popup
       v-model:show="showSkuPopup"
       position="bottom"
@@ -194,7 +191,6 @@
         </div>
 
         <div class="sku-specs">
-          <!-- 颜色选择 -->
           <div class="spec-group" v-if="colorOptions.length > 0">
             <div class="spec-name">颜色</div>
             <div class="spec-values">
@@ -213,7 +209,6 @@
             </div>
           </div>
 
-          <!-- 尺寸选择 -->
           <div class="spec-group" v-if="sizeOptions.length > 0">
             <div class="spec-name">尺寸</div>
             <div class="spec-values">
@@ -243,26 +238,22 @@
         </div>
 
         <div class="sku-actions">
-          <van-button
+          <button
             v-if="actionType === 'cart'"
-            type="warning"
-            block
-            round
+            class="action-btn btn-cart block-btn"
             :disabled="!canSubmit"
             @click="confirmAddToCart"
           >
-            确认
-          </van-button>
-          <van-button
+            确认加入购物车
+          </button>
+          <button
             v-else
-            type="danger"
-            block
-            round
+            class="action-btn btn-buy block-btn"
             :disabled="!canSubmit"
             @click="confirmBuyNow"
           >
-            确认
-          </van-button>
+            确认立即购买
+          </button>
         </div>
       </div>
     </van-popup>
@@ -290,6 +281,7 @@ import {
   Stepper as VanStepper,
   ImagePreview,
   showToast,
+  showLoadingToast,
   showConfirmDialog,
   closeToast,
 } from 'vant'
@@ -323,20 +315,14 @@ const isCollected = ref(false)
 const productImages = computed(() => {
   if (!product.value) return []
 
-  // 如果当前 SKU 有图片，优先显示 SKU 图片
   const images = []
-
   if (currentSku.value?.image) {
     images.push(currentSku.value.image)
   }
-
   images.push(product.value.cover_image)
-
   if (product.value.images && product.value.images.length > 0) {
     images.push(...product.value.images)
   }
-
-  // 去重
   return [...new Set(images)]
 })
 
@@ -355,8 +341,6 @@ const sizeOptions = computed(() => {
 // 当前选中的 SKU
 const currentSku = computed(() => {
   if (skuList.value.length === 0) return null
-
-  // 根据选中的颜色和尺寸查找 SKU
   return skuList.value.find((sku) => {
     const colorMatch = !selectedColor.value || sku.color === selectedColor.value
     const sizeMatch = !selectedSize.value || sku.size === selectedSize.value
@@ -369,21 +353,10 @@ const displayPrice = computed(() => {
   if (currentSku.value) {
     return currentSku.value.price
   }
-
-  // 如果没有选中 SKU，显示价格区间
   if (skuList.value.length > 0) {
     const prices = skuList.value.map((sku) => sku.price)
-    const minPrice = Math.min(...prices)
-    const maxPrice = Math.max(...prices)
-
-    if (minPrice === maxPrice) {
-      return minPrice
-    }
-
-    // 返回最低价
-    return minPrice
+    return Math.min(...prices)
   }
-
   return 0
 })
 
@@ -397,7 +370,6 @@ const selectedSkuText = computed(() => {
 
 // 是否可以提交
 const canSubmit = computed(() => {
-  // 如果有 SKU，必须选择完整
   if (skuList.value.length > 0) {
     if (!currentSku.value) return false
     if (currentSku.value.stock < quantity.value) return false
@@ -412,7 +384,6 @@ const cartBadge = computed(() => {
   return count > 0 ? (count > 99 ? '99+' : count) : ''
 })
 
-// 判断颜色是否可选
 const isColorAvailable = (color: string): boolean => {
   return skuList.value.some((sku) => {
     const colorMatch = sku.color === color
@@ -421,7 +392,6 @@ const isColorAvailable = (color: string): boolean => {
   })
 }
 
-// 判断尺寸是否可选
 const isSizeAvailable = (size: string): boolean => {
   return skuList.value.some((sku) => {
     const colorMatch = !selectedColor.value || sku.color === selectedColor.value
@@ -430,16 +400,12 @@ const isSizeAvailable = (size: string): boolean => {
   })
 }
 
-// 选择颜色
 const selectColor = (color: string) => {
   if (!isColorAvailable(color)) return
-
   if (selectedColor.value === color) {
     selectedColor.value = ''
   } else {
     selectedColor.value = color
-
-    // 自动选择第一个可用的尺寸
     if (!selectedSize.value || !isSizeAvailable(selectedSize.value)) {
       const availableSize = sizeOptions.value.find((size) => {
         return skuList.value.some(
@@ -453,16 +419,12 @@ const selectColor = (color: string) => {
   }
 }
 
-// 选择尺寸
 const selectSize = (size: string) => {
   if (!isSizeAvailable(size)) return
-
   if (selectedSize.value === size) {
     selectedSize.value = ''
   } else {
     selectedSize.value = size
-
-    // 自动选择第一个可用的颜色
     if (!selectedColor.value || !isColorAvailable(selectedColor.value)) {
       const availableColor = colorOptions.value.find((color) => {
         return skuList.value.some(
@@ -476,47 +438,28 @@ const selectSize = (size: string) => {
   }
 }
 
-// 自动选择第一个可用的 SKU
 const autoSelectFirstSku = () => {
   if (skuList.value.length === 0) return
-
-  console.log('自动选择第一个可用的 SKU')
-
-  // 查找第一个有库存的 SKU
   const firstAvailableSku = skuList.value.find((sku) => sku.stock > 0)
-
   if (firstAvailableSku) {
     selectedColor.value = firstAvailableSku.color
     selectedSize.value = firstAvailableSku.size
-
-    console.log('已自动选择:', {
-      color: selectedColor.value,
-      size: selectedSize.value,
-      sku: firstAvailableSku,
-    })
   } else {
-    // 如果所有 SKU 都没有库存，选择第一个
     const firstSku = skuList.value[0]
     selectedColor.value = firstSku.color
     selectedSize.value = firstSku.size
-
-    console.log('所有 SKU 无库存，选择第一个:', firstSku)
   }
 }
 
-// 处理图片 URL
 const getImageUrl = (url: string) => {
   if (!url) return ''
-
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url
   }
-
   const baseURL = import.meta.env.VITE_API_BASE_URL || ''
   return url.startsWith('/') ? `${baseURL}${url}` : `${baseURL}/${url}`
 }
 
-// 格式化价格
 const formatPrice = (price: number) => {
   if (typeof price === 'number') {
     return price.toFixed(2)
@@ -524,44 +467,30 @@ const formatPrice = (price: number) => {
   return '0.00'
 }
 
-// 轮播图切换
 const onSwipeChange = (index: number) => {
   currentSwipeIndex.value = index
 }
 
-// 加载商品详情
 const loadProductDetail = async () => {
   try {
     loading.value = true
-
     const productId = route.query.id as string
-
-    console.log('商品ID:', productId, '类型:', typeof productId)
-
     if (!productId) {
       showToast('商品ID不存在')
       product.value = null
       return
     }
-
     const numericId = Number(productId)
-
     if (isNaN(numericId)) {
       showToast('商品ID格式错误')
       product.value = null
       return
     }
 
-    console.log('请求商品详情，ID:', numericId)
-
-    // 并行请求商品详情和 SKU 列表
     const [detailRes, skuRes] = await Promise.all([
       getProductDetail(numericId),
       getProductSkus(numericId),
     ])
-
-    console.log('商品详情响应:', detailRes)
-    console.log('SKU列表响应:', skuRes)
 
     if (detailRes.code === 0 && detailRes.data) {
       product.value = detailRes.data
@@ -571,20 +500,12 @@ const loadProductDetail = async () => {
     }
 
     if (skuRes.code === 0 && skuRes.data) {
-      // 直接使用返回的数组
       skuList.value = skuRes.data
-
-      console.log('SKU列表:', skuList.value)
-      console.log('颜色选项:', colorOptions.value)
-      console.log('尺寸选项:', sizeOptions.value)
-
-      // 自动选择第一个可用的 SKU
       autoSelectFirstSku()
     }
   } catch (error: any) {
     console.error('加载商品详情失败:', error)
     product.value = null
-
     if (error.response?.status === 422) {
       showToast('商品ID格式错误')
     } else if (error.response?.status === 404) {
@@ -597,15 +518,12 @@ const loadProductDetail = async () => {
   }
 }
 
-// 监听选中的 SKU 变化，更新轮播图
 watch(currentSku, (newSku) => {
   if (newSku?.image) {
-    // 如果 SKU 有图片，重置轮播图到第一张
     currentSwipeIndex.value = 0
   }
 })
 
-// 图片预览
 const previewImages = (startIndex: number) => {
   ImagePreview({
     images: productImages.value.map((img) => getImageUrl(img)),
@@ -613,27 +531,22 @@ const previewImages = (startIndex: number) => {
   })
 }
 
-// 返回
 const onBack = () => {
   router.back()
 }
 
-// 分享
 const onShare = () => {
   showToast('分享功能开发中')
 }
 
-// 去首页
 const goHome = () => {
   router.push('/home')
 }
 
-// 去购物车
 const goCart = () => {
   router.push('/cart')
 }
 
-// 收藏/取消收藏
 const onCollect = () => {
   if (!userStore.isLogin) {
     showConfirmDialog({
@@ -650,12 +563,10 @@ const onCollect = () => {
       .catch(() => {})
     return
   }
-
   isCollected.value = !isCollected.value
   showToast(isCollected.value ? '收藏成功' : '取消收藏')
 }
 
-// 加入购物车
 const onAddToCart = () => {
   if (!userStore.isLogin) {
     showConfirmDialog({
@@ -672,50 +583,36 @@ const onAddToCart = () => {
       .catch(() => {})
     return
   }
-
-  // 如果没有 SKU，提示错误
   if (skuList.value.length === 0) {
     showToast('该商品暂无可购买规格')
     return
   }
-
-  // 显示 SKU 选择弹窗
   actionType.value = 'cart'
   showSkuPopup.value = true
 }
 
-// 确认加入购物车
 const confirmAddToCart = async () => {
   try {
-    // 检查是否选择了规格
     if (!currentSku.value) {
       showToast('请选择商品规格')
       return
     }
-
-    // 检查库存
     if (currentSku.value.stock < quantity.value) {
       showToast('库存不足')
       return
     }
-
-    // 添加到购物车
     await cartStore.addCartItem({
       sku_id: currentSku.value.id,
       quantity: quantity.value,
     })
-
-    // 关闭弹窗
+    showToast('加入购物车成功')
     showSkuPopup.value = false
-
-    // 重置数量
     quantity.value = 1
   } catch (error) {
     console.error('添加购物车失败:', error)
   }
 }
 
-// 立即购买
 const onBuyNow = () => {
   if (!userStore.isLogin) {
     showConfirmDialog({
@@ -732,27 +629,20 @@ const onBuyNow = () => {
       .catch(() => {})
     return
   }
-
-  // 如果没有 SKU，提示错误
   if (skuList.value.length === 0) {
     showToast('该商品暂无可购买规格')
     return
   }
-
-  // 显示 SKU 选择弹窗
   actionType.value = 'buy'
   showSkuPopup.value = true
 }
 
-// 确认立即购买
+// 立即购买 - 修复逻辑：直接跳转到购物车
 const confirmBuyNow = async () => {
-  // 检查是否选择了规格
   if (skuList.value.length > 0 && !currentSku.value) {
     showToast('请选择商品规格')
     return
   }
-
-  // 检查库存
   const stock = currentSku.value?.stock || 0
   if (stock < quantity.value) {
     showToast('库存不足')
@@ -766,49 +656,29 @@ const confirmBuyNow = async () => {
       duration: 0,
     })
 
-    // 先添加到购物车
+    // 1. 添加到购物车
     await cartStore.addCartItem({
       sku_id: currentSku.value!.id,
       quantity: quantity.value,
     })
 
-    // 重新获取购物车列表
+    // 2. 重新获取购物车列表，更新角标
     await cartStore.fetchCartList()
 
-    // 找到刚添加的商品并选中
-    const addedItem = cartStore.cartList.find(
-      (item) => item.sku_id === currentSku.value!.id
-    )
-    if (addedItem) {
-      // 取消其他商品的选中状态
-      cartStore.selectAll(false)
-      // 只选中当前商品
-      cartStore.toggleSelect(addedItem.id)
-    }
-
     closeToast()
+    
+    // 3. 【修复】直接跳转到购物车页面
+    router.push('/cart')
 
-    console.log('立即购买 - 已添加到购物车并选中')
-
-    // 跳转到订单确认页
-    router.push({
-      path: '/order/confirm',
-      query: {
-        type: 'buy',
-      },
-    })
-
-    // 关闭弹窗
+    // 4. 跳转后关闭弹窗并重置状态
     showSkuPopup.value = false
-
-    // 重置数量和选择
     quantity.value = 1
     selectedColor.value = ''
     selectedSize.value = ''
   } catch (error) {
     closeToast()
     console.error('立即购买失败:', error)
-    showToast('操作失败')
+    showToast('操作失败，请检查网络或重新尝试') 
   }
 }
 
@@ -818,6 +688,10 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+// 定义蓝白主题颜色
+$primary-blue: #1989fa;
+$light-blue-bg: #eef7ff;
+
 .product-detail-page {
   min-height: 100vh;
   background-color: #f5f5f5;
@@ -856,16 +730,11 @@ onMounted(() => {
         margin-bottom: 12px;
 
         .current-price {
-          color: #ee0a24;
+          color: #ff4d4f; 
           font-weight: bold;
 
-          .symbol {
-            font-size: 16px;
-          }
-
-          .price {
-            font-size: 28px;
-          }
+          .symbol { font-size: 16px; }
+          .price { font-size: 28px; }
         }
 
         .sales-info {
@@ -883,7 +752,6 @@ onMounted(() => {
           line-height: 24px;
           margin-bottom: 4px;
         }
-
         .product-subtitle {
           font-size: 14px;
           color: #969799;
@@ -906,17 +774,13 @@ onMounted(() => {
       background-color: #fff;
       margin-bottom: 8px;
       cursor: pointer;
-
-      &:active {
-        background-color: #f7f8fa;
-      }
+      &:active { background-color: #f7f8fa; }
 
       .spec-label {
         font-size: 14px;
         color: #323233;
         margin-right: 12px;
       }
-
       .spec-value {
         flex: 1;
         font-size: 14px;
@@ -926,10 +790,8 @@ onMounted(() => {
 
     .detail-section {
       background-color: #fff;
-
       .detail-content {
         padding: 16px;
-
         .detail-text {
           font-size: 14px;
           color: #646566;
@@ -937,17 +799,9 @@ onMounted(() => {
           margin-bottom: 16px;
           white-space: pre-wrap;
         }
-
-        .detail-images {
-          :deep(.van-image) {
-            margin-bottom: 8px;
-          }
-        }
+        .detail-images :deep(.van-image) { margin-bottom: 8px; }
       }
-
-      .comment-content {
-        padding: 40px 16px;
-      }
+      .comment-content { padding: 40px 16px; }
     }
   }
 
@@ -966,48 +820,54 @@ onMounted(() => {
     .footer-icons {
       display: flex;
       gap: 16px;
-      margin-right: 12px;
+      margin-right: 16px;
 
       .icon-item {
-        position: relative; // 添加相对定位
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center; // 添加垂直居中
-        min-width: 44px; // 设置最小宽度，确保一致性
-        height: 44px; // 设置固定高度
+        justify-content: center;
+        min-width: 44px;
         cursor: pointer;
-
-        &:active {
-          opacity: 0.7;
-        }
-
-        // Badge 容器样式优化
-        :deep(.van-badge) {
+        &:active { opacity: 0.7; }
+        
+        // 统一图标/徽章的容器，解决对齐问题
+        .icon-area {
+          height: 22px; 
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-
-          .van-badge__wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 2px; // 调整图标和文字的间距
-          }
         }
 
-        // 图标样式
-        .van-icon {
-          display: block;
-          margin-bottom: 2px; // 统一图标和文字的间距
+        // 【修复】购物车区域，图标居中，角标绝对定位
+        .cart-icon-fixed {
+            position: relative; // 为内部角标提供定位上下文
+            height: 22px; 
+            width: 22px; // 确保宽度足够包裹图标
+            
+            :deep(.van-icon) {
+                // 确保图标本身居中
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+            
+            :deep(.van-badge) {
+                // 角标绝对定位脱离文档流，不影响图标垂直空间
+                position: absolute;
+                top: 0;
+                right: 0;
+                transform: translate(50%, -50%); 
+                transform-origin: 100% 0;
+            }
         }
 
         span {
           font-size: 10px;
           color: #646566;
+          margin-top: 2px;
           line-height: 1;
-          white-space: nowrap; // 防止文字换行
         }
       }
     }
@@ -1017,9 +877,28 @@ onMounted(() => {
       display: flex;
       gap: 12px;
 
-      :deep(.van-button) {
+      .action-btn {
         flex: 1;
         height: 40px;
+        border: none;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.2s;
+
+        &:active { opacity: 0.8; }
+
+        &.btn-cart {
+          background-color: $light-blue-bg;
+          color: $primary-blue;
+        }
+
+        &.btn-buy {
+          background: linear-gradient(135deg, #57b0ff, $primary-blue);
+          color: #fff;
+          box-shadow: 0 2px 6px rgba(25, 137, 250, 0.3);
+        }
       }
     }
   }
@@ -1042,20 +921,17 @@ onMounted(() => {
 
       .sku-info {
         flex: 1;
-
         .sku-price {
           font-size: 20px;
-          color: #ee0a24;
+          color: #ff4d4f;
           font-weight: bold;
           margin-bottom: 4px;
         }
-
         .sku-stock {
           font-size: 12px;
           color: #969799;
           margin-bottom: 4px;
         }
-
         .sku-selected {
           font-size: 12px;
           color: #323233;
@@ -1066,41 +942,37 @@ onMounted(() => {
     .sku-specs {
       .spec-group {
         margin-bottom: 20px;
-
         .spec-name {
           font-size: 14px;
           color: #323233;
           margin-bottom: 12px;
         }
-
         .spec-values {
           display: flex;
           flex-wrap: wrap;
           gap: 12px;
 
           .spec-value-item {
-            padding: 8px 16px;
+            padding: 6px 16px;
             background-color: #f7f8fa;
-            border: 1px solid #ebedf0;
-            border-radius: 4px;
+            border: 1px solid transparent;
+            border-radius: 16px;
             font-size: 13px;
             color: #323233;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
 
             &.active {
-              background-color: #fff7f0;
-              border-color: #ee0a24;
-              color: #ee0a24;
+              background-color: $light-blue-bg;
+              border-color: $primary-blue;
+              color: $primary-blue;
+              font-weight: 500;
             }
 
             &.disabled {
               opacity: 0.4;
               cursor: not-allowed;
-            }
-
-            &:not(.disabled):active {
-              transform: scale(0.95);
+              background-color: #f5f5f5;
             }
           }
         }
@@ -1114,15 +986,38 @@ onMounted(() => {
       padding: 16px 0;
       border-top: 1px solid #ebedf0;
       margin-bottom: 16px;
-
-      .quantity-label {
-        font-size: 14px;
-        color: #323233;
-      }
+      .quantity-label { font-size: 14px; color: #323233; }
     }
 
     .sku-actions {
-      padding-top: 16px;
+      padding-top: 8px;
+      
+      .action-btn {
+        width: 100%;
+        height: 44px;
+        border: none;
+        border-radius: 22px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        
+        &.btn-cart {
+          background-color: $light-blue-bg;
+          color: $primary-blue;
+        }
+        
+        &.btn-buy {
+          background: linear-gradient(135deg, #57b0ff, $primary-blue);
+          color: #fff;
+          box-shadow: 0 4px 10px rgba(25, 137, 250, 0.3);
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+      }
     }
   }
 }

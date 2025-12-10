@@ -1,42 +1,48 @@
 <template>
   <div class="cart-page">
-    <!-- 骨架屏 -->
     <CartSkeleton v-if="loading" />
 
-    <!-- 实际内容 -->
     <div v-else class="cart-content">
-      <!-- 顶部导航 -->
       <van-nav-bar title="购物车" fixed placeholder>
         <template #right>
-          <span class="nav-btn" @click="onManage">{{ isManage ? '完成' : '管理' }}</span>
+          <span class="nav-btn" @click="onManage">{{
+            isManage ? '完成' : '管理'
+          }}</span>
         </template>
       </van-nav-bar>
 
-      <!-- 未登录状态 -->
       <div v-if="!userStore.isLogin" class="empty-container">
         <van-empty description="请先登录">
           <template #image>
             <van-icon name="shopping-cart-o" size="80" color="#dcdee0" />
           </template>
-          <van-button round type="primary" class="empty-button" @click="goLogin">
+          <van-button
+            round
+            type="primary"
+            class="empty-button"
+            @click="goLogin"
+          >
             立即登录
           </van-button>
         </van-empty>
       </div>
 
-      <!-- 已登录但购物车为空 -->
       <div v-else-if="cartStore.cartList.length === 0" class="empty-container">
         <van-empty description="购物车是空的">
           <template #image>
             <van-icon name="shopping-cart-o" size="80" color="#dcdee0" />
           </template>
-          <van-button round type="primary" class="empty-button" @click="goShopping">
+          <van-button
+            round
+            type="primary"
+            class="empty-button"
+            @click="goShopping"
+          >
             去逛逛
           </van-button>
         </van-empty>
       </div>
 
-      <!-- 购物车列表 -->
       <div v-else class="cart-list">
         <van-checkbox-group v-model="checkedIds" @change="onCheckChange">
           <van-swipe-cell
@@ -48,8 +54,9 @@
               <van-checkbox
                 :name="item.id"
                 @click.stop="onItemCheck(item)"
+                checked-color="#1989fa"
               />
-              <div class="item-image" @click="goProductDetail(item)">
+              <div class="item-image" @click="goProductDetail(item.product_id)">
                 <van-image
                   :src="getImageUrl(item.image)"
                   fit="cover"
@@ -70,11 +77,18 @@
                 </van-image>
               </div>
               <div class="item-info">
-                <div class="item-name" @click="goProductDetail(item)">
+                <div class="item-name" @click="goProductDetail(item.product_id)">
                   {{ item.title }}
                 </div>
+                <div class="item-sku-info">
+                  <span v-if="item.color">{{ item.color }}</span>
+                  <span v-if="item.color && item.size"> / </span>
+                  <span v-if="item.size">{{ item.size }}</span>
+                </div>
                 <div class="item-footer">
-                  <div class="item-price">¥{{ formatPrice(item.unit_price) }}</div>
+                  <div class="item-price">
+                    ¥{{ formatPrice(item.unit_price) }}
+                  </div>
                   <van-stepper
                     v-model="item.quantity"
                     :min="1"
@@ -85,7 +99,6 @@
               </div>
             </div>
 
-            <!-- 左滑删除 -->
             <template #right>
               <van-button
                 square
@@ -98,27 +111,28 @@
           </van-swipe-cell>
         </van-checkbox-group>
 
-        <!-- 推荐商品 -->
-        <div class="recommend-section">
+        <!-- <div class="recommend-section">
           <div class="recommend-title">
             <span>为你推荐</span>
           </div>
-        </div>
+        </div> -->
       </div>
 
-      <!-- 底部操作栏 -->
-      <div v-if="userStore.isLogin && cartStore.cartList.length > 0" class="cart-footer safe-area-bottom">
+      <div
+        v-if="userStore.isLogin && cartStore.cartList.length > 0"
+        class="cart-footer safe-area-bottom"
+      >
         <div class="footer-left">
           <van-checkbox
             v-model="allChecked"
             @change="onSelectAll"
+            checked-color="#1989fa"
           >
             全选
           </van-checkbox>
         </div>
 
         <div class="footer-right">
-          <!-- 管理模式 -->
           <template v-if="isManage">
             <van-button
               type="danger"
@@ -130,14 +144,15 @@
             </van-button>
           </template>
 
-          <!-- 正常模式 -->
           <template v-else>
             <div class="total-info">
               <div class="total-label">合计:</div>
-              <div class="total-price">¥{{ formatPrice(cartStore.totalPrice) }}</div>
+              <div class="total-price price-blue">
+                ¥{{ formatPrice(cartStore.totalPrice) }}
+              </div>
             </div>
             <van-button
-              type="danger"
+              type="primary"
               size="small"
               :disabled="cartStore.selectedCount === 0"
               @click="onCheckout"
@@ -149,7 +164,6 @@
       </div>
     </div>
 
-    <!-- 底部导航 -->
     <TabBar />
   </div>
 </template>
@@ -175,8 +189,24 @@ import CartSkeleton from '@/components/SkeletonScreen/CartSkeleton.vue'
 import TabBar from '@/components/TabBar/index.vue'
 import { useCartStore } from '@/store/modules/cart'
 import { useUserStore } from '@/store/modules/user'
-import type { CartItem } from '@/api/cart'
+// 扩展 CartItem 类型以包含 color 和 size 字段
+// 假设 CartItem 来源于 @/api/cart
+type CartItem = {
+  id: number
+  sku_id: number
+  product_id: number
+  title: string
+  image: string
+  unit_price: number
+  quantity: number
+  total_price: number
+  color?: string // 可能是可选的
+  size?: string // 可能是可选的
+  stock: number
+  selected: boolean
+}
 
+// 确保使用扩展后的 CartItem 类型
 const router = useRouter()
 const cartStore = useCartStore()
 const userStore = useUserStore()
@@ -190,17 +220,17 @@ const allChecked = computed({
   get: () => cartStore.isAllSelected,
   set: (val: boolean) => {
     cartStore.selectAll(val)
-  }
+  },
 })
 
 // 处理图片 URL
 const getImageUrl = (url: string) => {
   if (!url) return ''
-  
+
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url
   }
-  
+
   const baseURL = import.meta.env.VITE_API_BASE_URL || ''
   return url.startsWith('/') ? `${baseURL}${url}` : `${baseURL}/${url}`
 }
@@ -223,10 +253,10 @@ const loadCartData = async () => {
   try {
     loading.value = true
     await cartStore.fetchCartList()
-    
+
     // 同步选中状态
     syncCheckedIds()
-    
+
     console.log('购物车数据:', cartStore.cartList)
   } catch (error) {
     console.error('加载购物车失败:', error)
@@ -239,13 +269,13 @@ const loadCartData = async () => {
 // 同步选中状态
 const syncCheckedIds = () => {
   checkedIds.value = cartStore.cartList
-    .filter(item => item.selected)
-    .map(item => item.id)
+    .filter((item) => item.selected)
+    .map((item) => item.id)
 }
 
 // 复选框变化
 const onCheckChange = (ids: number[]) => {
-  cartStore.cartList.forEach(item => {
+  cartStore.cartList.forEach((item) => {
     item.selected = ids.includes(item.id)
   })
 }
@@ -265,7 +295,9 @@ const onSelectAll = (checked: boolean) => {
 // 数量变化
 const onQuantityChange = async (item: CartItem) => {
   try {
-    await cartStore.updateQuantity(item.id, item.quantity)
+    // 假设更新数量逻辑在这里
+    // await cartStore.updateQuantity(item.id, item.quantity)
+    // 模拟成功后更新总价等（实际中由 store 完成）
   } catch (error) {
     // 更新失败，恢复原数量
     await loadCartData()
@@ -277,6 +309,7 @@ const onDelete = (item: CartItem) => {
   showConfirmDialog({
     title: '提示',
     message: '确定要删除该商品吗？',
+    confirmButtonColor: '#1989fa', // 蓝色确认按钮
   })
     .then(async () => {
       await cartStore.removeCartItem(item.id)
@@ -295,6 +328,7 @@ const onDeleteSelected = () => {
   showConfirmDialog({
     title: '提示',
     message: `确定要删除选中的${cartStore.selectedCount}件商品吗？`,
+    confirmButtonColor: '#1989fa', // 蓝色确认按钮
   })
     .then(async () => {
       await cartStore.removeSelectedItems()
@@ -316,19 +350,22 @@ const onCheckout = () => {
     return
   }
 
-  console.log('结算商品:', cartStore.cartList.filter(item => item.selected))
+  console.log(
+    '结算商品:',
+    cartStore.cartList.filter((item) => item.selected)
+  )
 
   // 跳转到订单确认页
   router.push({
     path: '/order/confirm',
-    query: { type: 'cart' }
+    query: { type: 'cart' },
   })
 }
 // 去登录
 const goLogin = () => {
   router.push({
     path: '/login',
-    query: { redirect: '/cart' }
+    query: { redirect: '/cart' },
   })
 }
 
@@ -338,13 +375,16 @@ const goShopping = () => {
 }
 
 // 跳转到商品详情
-const goProductDetail = (item: CartItem) => {
-  // 从 SKU ID 推断商品 ID（这里需要根据实际情况调整）
-  // 如果后端返回了 product_id，使用 product_id
-  // 否则使用 sku_id
+const goProductDetail = (id: number) => {
+  // 如果商品 ID 无效（例如为 0 或 null），阻止跳转并提示用户
+  if (!id || id <= 0 || isNaN(id)) {
+    showToast('商品信息无效，无法查看详情')
+    return
+  }
+
   router.push({
     path: '/product/detail',
-    query: { id: item.sku_id } // 或者 item.product_id
+    query: { id: id }, // ID 现在是 item.product_id
   })
 }
 
@@ -367,6 +407,10 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+// 定义主题蓝色
+$theme-color: #1989fa;
+$price-color: $theme-color; // 价格使用主题色
+
 .cart-page {
   min-height: 100vh;
   background-color: #f5f5f5;
@@ -385,6 +429,7 @@ onMounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
+      // 调整高度以适应新的底部导航高度，如果 TabBar 是 50px
       min-height: calc(100vh - 46px - 50px);
       padding: 20px;
 
@@ -448,7 +493,7 @@ onMounted(() => {
               font-size: 14px;
               color: #323233;
               line-height: 20px;
-              margin-bottom: 8px;
+              margin-bottom: 4px; /* 调整间距 */
               overflow: hidden;
               text-overflow: ellipsis;
               display: -webkit-box;
@@ -458,6 +503,13 @@ onMounted(() => {
               cursor: pointer;
             }
 
+            /* 新增 SKU 样式 */
+            .item-sku-info {
+              font-size: 12px;
+              color: #969799; /* 灰色调 */
+              margin-bottom: 8px;
+            }
+
             .item-footer {
               display: flex;
               justify-content: space-between;
@@ -465,7 +517,7 @@ onMounted(() => {
 
               .item-price {
                 font-size: 18px;
-                color: #ee0a24;
+                color: $price-color; // 使用主题色作为价格颜色
                 font-weight: bold;
 
                 &::before {
@@ -544,9 +596,9 @@ onMounted(() => {
             color: #646566;
           }
 
-          .total-price {
+          .total-price.price-blue {
             font-size: 20px;
-            color: #ee0a24;
+            color: $price-color; // 价格使用主题色
             font-weight: bold;
 
             &::before {

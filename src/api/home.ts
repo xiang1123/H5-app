@@ -86,3 +86,4 @@ export const getProducts = (params: ProductListParams) => {
   
   return request.get<ProductListResponse>('/api/v1/products', { params: cleanParams })
 }
+
