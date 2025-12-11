@@ -246,14 +246,14 @@ const formatPrice = (price: number) => {
 // 格式化 SKU 属性
 const formatSkuAttrs = (attrs: any) => {
   if (!attrs) return ''
-  
+
   if (typeof attrs === 'string') return attrs
-  
+
   // 如果是对象，格式化为字符串
   const parts = []
   if (attrs.color) parts.push(attrs.color)
   if (attrs.size) parts.push(attrs.size)
-  
+
   return parts.join(' / ')
 }
 
@@ -330,7 +330,7 @@ const resetAndLoad = () => {
 
 // 上拉加载更多
 const onLoad = async () => {
-  if (finished.value || listLoading.value) {
+  if (finished.value) {
     return
   }
 
