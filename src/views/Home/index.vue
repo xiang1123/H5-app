@@ -13,9 +13,9 @@
       </div>
     </div>
 
-    <van-pull-refresh 
-      v-model="refreshing" 
-      @refresh="onRefresh" 
+    <van-pull-refresh
+      v-model="refreshing"
+      @refresh="onRefresh"
       class="pull-content"
     >
       <div class="header-bg-decoration"></div>
@@ -42,7 +42,11 @@
             @click="goCategory(item)"
           >
             <div class="nav-icon-bg">
-              <van-icon :name="getCategoryIcon(item.id)" size="22" color="#fff" />
+              <van-icon
+                :name="getCategoryIcon(item.id)"
+                size="22"
+                color="#fff"
+              />
             </div>
             <span class="nav-text">{{ item.name }}</span>
           </div>
@@ -81,20 +85,24 @@
                     lazy-load
                   >
                     <template #loading>
-                      <div class="loading-holder"><van-loading size="20" /></div>
+                      <div class="loading-holder">
+                        <van-loading size="20" />
+                      </div>
                     </template>
                   </van-image>
                   <div class="sold-out-mask" v-if="item.status !== 'ON_SALE'">
-                     <span>{{ getStatusText(item.status) }}</span>
+                    <span>{{ getStatusText(item.status) }}</span>
                   </div>
                 </div>
 
                 <div class="info-wrapper">
                   <div class="info-top">
                     <div class="goods-title">{{ item.title }}</div>
-                    <div class="goods-sub-title" v-if="item.subtitle">{{ item.subtitle }}</div>
+                    <div class="goods-sub-title" v-if="item.subtitle">
+                      {{ item.subtitle }}
+                    </div>
                   </div>
-                  
+
                   <div class="goods-bottom">
                     <div class="price-box">
                       <span class="symbol">¥</span>
@@ -107,9 +115,11 @@
               </div>
             </div>
           </van-list>
-          
+
           <van-empty
-            v-if="!listLoading && !listError && products.length === 0 && !refreshing"
+            v-if="
+              !listLoading && !listError && products.length === 0 && !refreshing
+            "
             description="暂无商品"
             image="search"
           />
@@ -133,7 +143,7 @@ import {
   Loading as VanLoading,
   Empty as VanEmpty,
   PullRefresh as VanPullRefresh,
-  showToast
+  showToast,
 } from 'vant'
 import TabBar from '@/components/TabBar/index.vue'
 import { getBanners, getCategories, getProducts } from '@/api/home'
@@ -184,14 +194,24 @@ const topCategories = computed(() => {
 
 const getCategoryIcon = (id: number) => {
   const iconMap: Record<number, string> = {
-    1: 'bag-o', 2: 'gift-o', 3: 'gem-o', 4: 'flower-o',
-    5: 'shop-o', 6: 'fire-o', 7: 'star-o', 8: 'music-o'
+    1: 'bag-o',
+    2: 'gift-o',
+    3: 'gem-o',
+    4: 'flower-o',
+    5: 'shop-o',
+    6: 'fire-o',
+    7: 'star-o',
+    8: 'music-o',
   }
   return iconMap[id] || 'apps-o'
 }
 
 const getStatusText = (status: string) => {
-  const map: Record<string, string> = { 'ON_SALE': '', 'OFF_SALE': '已下架', 'SOLD_OUT': '抢光了' }
+  const map: Record<string, string> = {
+    ON_SALE: '',
+    OFF_SALE: '已下架',
+    SOLD_OUT: '抢光了',
+  }
   return map[status] || status
 }
 
@@ -214,16 +234,19 @@ const getImageUrl = (url: string) => {
 const loadData = async () => {
   try {
     loading.value = true
-    const [bannersRes, categoriesRes] = await Promise.all([getBanners(), getCategories()])
+    const [bannersRes, categoriesRes] = await Promise.all([
+      getBanners(),
+      getCategories(),
+    ])
     if (bannersRes?.data) banners.value = bannersRes.data
     if (categoriesRes?.data) categories.value = categoriesRes.data
-    
+
     // 重置状态
     pageParams.value.page = 1
     finished.value = false
     listError.value = false
-    products.value = [] 
-    
+    products.value = []
+
     await loadProducts(false)
   } catch (error) {
     console.error(error)
@@ -235,24 +258,24 @@ const loadData = async () => {
 
 const loadProducts = async (isLoadMore = false) => {
   try {
-    listError.value = false 
-    
+    listError.value = false
+
     const res = await getProducts({
       page: pageParams.value.page,
-      page_size: pageParams.value.page_size
+      page_size: pageParams.value.page_size,
     })
-    
+
     if (res?.data) {
       const { list, total } = res.data
-      
+
       if (isLoadMore) {
         products.value = [...products.value, ...list]
       } else {
         products.value = list
       }
-      
+
       pageParams.value.total = total
-      
+
       if (products.value.length >= total || list.length === 0) {
         finished.value = true
       } else {
@@ -277,7 +300,7 @@ const loadProducts = async (isLoadMore = false) => {
 const onLoad = () => {
   // 【修复】不能判断 listLoading.value，因为 van-list 触发 load 时会自动设为 true
   if (finished.value || listError.value) return
-  
+
   pageParams.value.page++
   loadProducts(true)
 }
@@ -295,8 +318,10 @@ const onRefresh = async () => {
 }
 
 const goSearch = () => router.push('/search')
-const goCategory = (item: Category) => router.push({ name: 'Category', query: { id: item.id } })
-const goProductDetail = (id: number) => router.push({ path: '/product/detail', query: { id } })
+const goCategory = (item: Category) =>
+  router.push({ name: 'Category', query: { id: item.id } })
+const goProductDetail = (id: number) =>
+  router.push({ path: '/product/detail', query: { id } })
 
 onMounted(() => {
   if (isFirstLoad.value) {
@@ -326,7 +351,7 @@ $bg-gray: #f7f8fa;
     left: 0;
     right: 0;
     z-index: 100;
-    background: $primary-blue; 
+    background: $primary-blue;
     padding: 6px 12px;
 
     .search-box {
@@ -336,7 +361,7 @@ $bg-gray: #f7f8fa;
       height: 32px;
       border-radius: 16px;
       padding: 0 4px 0 12px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
       .app-logo {
         margin-right: 8px;
@@ -353,7 +378,9 @@ $bg-gray: #f7f8fa;
         align-items: center;
         color: #999;
         font-size: 13px;
-        .van-icon { margin-right: 4px; }
+        .van-icon {
+          margin-right: 4px;
+        }
       }
 
       .search-btn {
@@ -368,7 +395,7 @@ $bg-gray: #f7f8fa;
   }
 
   :deep(.van-pull-refresh) {
-    padding-top: 44px; 
+    padding-top: 44px;
     min-height: 100vh;
   }
 
@@ -422,7 +449,10 @@ $bg-gray: #f7f8fa;
         justify-content: center;
         margin-bottom: 4px;
       }
-      .nav-text { font-size: 11px; color: #333; }
+      .nav-text {
+        font-size: 11px;
+        color: #333;
+      }
     }
   }
 
@@ -433,7 +463,11 @@ $bg-gray: #f7f8fa;
       display: flex;
       align-items: center;
       gap: 6px;
-      .main-title { font-size: 16px; font-weight: 700; color: #333; }
+      .main-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #333;
+      }
     }
 
     .goods-list-vertical {
@@ -448,9 +482,11 @@ $bg-gray: #f7f8fa;
         border-radius: 8px;
         overflow: hidden;
         height: 120px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.02);
-        
-        &:active { background-color: #fafafa; }
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+
+        &:active {
+          background-color: #fafafa;
+        }
 
         .img-wrapper {
           width: 120px;
@@ -458,9 +494,11 @@ $bg-gray: #f7f8fa;
           position: relative;
           background: #f8f8f8;
           flex-shrink: 0;
-          
-          :deep(.van-image) { display: block; }
-          
+
+          :deep(.van-image) {
+            display: block;
+          }
+
           .loading-holder {
             display: flex;
             justify-content: center;
@@ -472,7 +510,7 @@ $bg-gray: #f7f8fa;
           .sold-out-mask {
             position: absolute;
             inset: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -519,14 +557,21 @@ $bg-gray: #f7f8fa;
             align-items: flex-end;
 
             .price-box {
-              color: #ff4d4f; 
+              color: #ff4d4f;
               font-weight: bold;
               line-height: 1;
-              .symbol { font-size: 12px; margin-right: 1px; }
-              .int { font-size: 18px; }
-              .dec { font-size: 12px; }
+              .symbol {
+                font-size: 12px;
+                margin-right: 1px;
+              }
+              .int {
+                font-size: 18px;
+              }
+              .dec {
+                font-size: 12px;
+              }
             }
-            
+
             .detail-btn {
               padding: 5px 12px;
               background: #eef7ff;

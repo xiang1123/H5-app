@@ -9,6 +9,8 @@ export interface CartItem {
   unit_price: number
   quantity: number
   total_price: number
+  color?: string  // SKU颜色
+  size?: string   // SKU尺码
   selected?: boolean  // 前端添加的选中状态
 }
 
@@ -30,7 +32,8 @@ export interface AddCartParams {
 
 // 更新购物车参数
 export interface UpdateCartParams {
-  quantity: number
+  quantity?: number
+  selected?: boolean
 }
 
 // 通用响应

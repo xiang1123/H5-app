@@ -295,10 +295,14 @@ const onSelectAll = (checked: boolean) => {
 // 数量变化
 const onQuantityChange = async (item: CartItem) => {
   try {
-    // 假设更新数量逻辑在这里
-    // await cartStore.updateQuantity(item.id, item.quantity)
-    // 模拟成功后更新总价等（实际中由 store 完成）
+    // 调用store中的更新方法
+    await cartStore.updateCartItem({
+      id: item.id,
+      quantity: item.quantity
+    })
   } catch (error) {
+    console.error('更新数量失败:', error)
+    showToast('更新数量失败')
     // 更新失败，恢复原数量
     await loadCartData()
   }

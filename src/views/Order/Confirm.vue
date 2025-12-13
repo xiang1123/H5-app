@@ -35,7 +35,11 @@
             <van-image :src="getImageUrl(item.cover_image)" fit="cover" width="80px" height="80px" />
             <div class="goods-info">
               <div class="goods-name">{{ item.title }}</div>
-              <div class="goods-sku" v-if="item.sku_attrs">{{ item.sku_attrs }}</div>
+              <div class="goods-sku" v-if="item.sku_attrs">
+                <span v-if="item.color">{{ item.color }}</span>
+                <span v-if="item.color && item.size"> / </span>
+                <span v-if="item.size">{{ item.size }}</span>
+              </div>
               <div class="goods-footer">
                 <span class="goods-price">¥{{ formatPrice(item.unit_price) }}</span>
                 <span class="goods-quantity">x{{ item.quantity }}</span>
@@ -136,6 +140,8 @@ const initOrderGoods = () => {
       unit_price: item.unit_price,
       quantity: item.quantity,
       total_price: item.total_price,
+      color: item.color,  // 添加颜色信息
+      size: item.size,    // 添加尺码信息
       sku_attrs: null,
     }))
   } else if (route.query.type === 'buy') {
